@@ -1,0 +1,10 @@
+
+vosk
+argostranslate
+silero-vad
+sounddevice
+numpy
+torch
+torchaudio
+tqdm
+requests
