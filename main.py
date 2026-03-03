@@ -171,8 +171,8 @@ class MacLoopbackCapture:
     def __init__(self, audio_queue):
         self.audio_queue = audio_queue
         self.stream = None
+        self.delegate = None
         self.is_running = False
-        self.run_loop = None
 
         try:
             import objc
@@ -196,24 +196,51 @@ class MacLoopbackCapture:
         import threading
 
         self.is_running = True
+        audio_queue_ref = self.audio_queue
 
-        # Metadata for delegate
+        # Metadata for delegate: type is the 4th argument (self, _cmd, stream, sampleBuffer, type)
         objc.registerMetaDataForSelector(
             b"CaptureDelegate",
             b"stream:didOutputSampleBuffer:ofType:",
-            {"arguments": {3: {"type": objc._C_NSInteger}}},
+            {"arguments": {4: {"type": objc._C_NSInteger}}},
         )
 
-        audio_queue_ref = self.audio_queue
-
         class CaptureDelegate(NSObject):
+            def initWithQueue_(self, audio_queue):
+                self = objc.super(CaptureDelegate, self).init()
+                if self:
+                    self.audio_queue = audio_queue
+                    self.buffer = []
+                    self.first_data = True
+                return self
+
             def stream_didOutputSampleBuffer_ofType_(self, stream, sampleBuffer, outputType):
                 if outputType == SCStreamOutputTypeAudio:
-                    # Very basic extraction - in a real app you'd use CMSampleBufferGetAudioBufferList
-                    # Here we just notify that we are receiving data. 
-                    # NOTE: Full PCM extraction from CMSampleBuffer in Python is non-trivial 
-                    # without more complex PyObjC/ctypes code.
-                    pass
+                    if self.first_data:
+                        print("Successfully receiving audio data from ScreenCaptureKit.")
+                        self.first_data = False
+                    try:
+                        block_buffer = CoreMedia.CMSampleBufferGetDataBuffer(sampleBuffer)
+                        if not block_buffer:
+                            return
+                        
+                        length = CoreMedia.CMBlockBufferGetDataLength(block_buffer)
+                        if length <= 0:
+                            return
+
+                        data = bytearray(length)
+                        CoreMedia.CMBlockBufferCopyDataBytes(block_buffer, 0, length, data)
+                        
+                        chunk = np.frombuffer(data, dtype=np.float32)
+                        if len(chunk) > 0:
+                            self.buffer.extend(chunk.tolist())
+                            
+                            while len(self.buffer) >= CHUNK_SIZE:
+                                block = np.array(self.buffer[:CHUNK_SIZE], dtype=np.float32).reshape(-1, 1)
+                                self.audio_queue.put(block)
+                                del self.buffer[:CHUNK_SIZE]
+                    except Exception:
+                        pass
 
         def run_capture():
             def handle_content(content, error):
@@ -221,24 +248,35 @@ class MacLoopbackCapture:
                     print(f"Error getting content: {error}")
                     return
 
+                if not content.displays():
+                    print("No displays found for ScreenCaptureKit.")
+                    return
+
                 display = content.displays()[0]
                 filter = SCContentFilter.alloc().initWithDisplay_excludingApplications_exceptingWindows_(
                     display, [], []
                 )
+                
                 config = SCStreamConfiguration.alloc().init()
                 config.setCapturesAudio_(True)
                 config.setExcludesCurrentProcessAudio_(True)
+                config.setSampleRate_(SAMPLERATE)
+                config.setChannelCount_(1)
 
-                delegate = CaptureDelegate.alloc().init()
+                # Initialize delegate with queue
+                self.delegate = CaptureDelegate.alloc().initWithQueue_(audio_queue_ref)
                 self.stream = SCStream.alloc().initWithFilter_configuration_delegate_(
                     filter, config, None
                 )
 
                 def start_handler(error):
-                    if error: print(f"Error starting SCStream: {error}")
-                    else: print("macOS ScreenCaptureKit started.")
+                    if error: 
+                        print(f"Error starting SCStream: {error}")
+                    else: 
+                        print("macOS ScreenCaptureKit started. Capturing system audio...")
 
-                self.stream.addStreamOutput_type_sampleHandlerQueue_error_(delegate, SCStreamOutputTypeAudio, None, None)
+                # Use a specific queue or None for default
+                self.stream.addStreamOutput_type_sampleHandlerQueue_error_(self.delegate, SCStreamOutputTypeAudio, None, None)
                 self.stream.startCaptureWithCompletionHandler_(start_handler)
 
             SCShareableContent.getShareableContentWithCompletionHandler_(handle_content)
