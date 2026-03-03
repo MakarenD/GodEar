@@ -17,7 +17,12 @@ import time
 SAMPLERATE = 16000
 CHUNK_SIZE = 512  # For VAD
 VAD_THRESHOLD = 0.5
-SILENCE_CHUNKS = 15 # Wait for 15 chunks (~0.5s) of silence to finalize
+SILENCE_CHUNKS = 7 # Wait for 7 chunks (~0.22s) of silence to finalize
+
+# Engine constants
+ENGINE_VOSK = "vosk"
+ENGINE_WHISPER = "whisper"
+ENGINE_WHISPER_LITE = "whisper-lite"
 
 # Language name/code -> standard code (for Vosk + deep-translator)
 LANG_ALIASES = {
@@ -89,11 +94,20 @@ def _get_loopback_devices():
 
 
 def _interactive_menu(from_lang, to_lang):
-    """Show menu and return (from_lang, to_lang, device_id, loopback, loopback_device_index)."""
+    """Show menu and return (from_lang, to_lang, device_id, loopback, loopback_device_index, engine)."""
     print("\n=== Speech Translation ===")
     from_in = input(f"Source language [{from_lang}]: ").strip() or from_lang
     to_in = input(f"Target language [{to_lang}]: ").strip() or to_lang
     from_lang, to_lang = from_in, to_in
+
+    print("\n=== Recognition Engine ===")
+    print(f"  1. Vosk (Fast, Local)")
+    print(f"  2. Whisper Medium (High accuracy, requires GPU/High CPU)")
+    print(f"  3. Whisper Base (Lite, Faster than Medium)")
+    engine_choice = input("Select (1-3) [1]: ").strip() or "1"
+    engine = ENGINE_VOSK
+    if engine_choice == "2": engine = ENGINE_WHISPER
+    elif engine_choice == "3": engine = ENGINE_WHISPER_LITE
     
     print("\n=== Audio Source ===")
     options = []
@@ -138,7 +152,7 @@ def _interactive_menu(from_lang, to_lang):
             device_id, loopback, loopback_device_index = option_data[idx - 1]
     except (ValueError, IndexError):
         pass
-    return from_lang, to_lang, device_id, loopback, loopback_device_index
+    return from_lang, to_lang, device_id, loopback, loopback_device_index, engine
 
 
 def _get_loopback_device(device_index=None):
@@ -294,23 +308,36 @@ class MacLoopbackCapture:
 
 
 class SpeechTranslator:
-    def __init__(self, from_lang="en", to_lang="ru", device_id=None, loopback=False, loopback_device_index=None):
+    def __init__(self, from_lang="en", to_lang="ru", device_id=None, loopback=False, loopback_device_index=None, engine="vosk"):
         self.from_lang = _normalize_lang(from_lang) or from_lang
         self.to_lang = _normalize_lang(to_lang) or to_lang
         self.device_id = device_id
         self.loopback = loopback
         self.loopback_device_index = loopback_device_index
+        self.engine = engine
 
-        print(f"Loading Vosk model for {self.from_lang}...")
-        model_name = VOSK_MODELS.get(self.from_lang) or VOSK_MODELS.get(self.from_lang[:2])
-        if not model_name:
-            raise ValueError(f"No Vosk model for '{self.from_lang}'. Supported: {', '.join(VOSK_MODELS.keys())}.")
-        model_path = f"models/{model_name}"
-        if not os.path.exists(model_path):
-            from setup_models import download_vosk_model
-            download_vosk_model(model_name)
-        self.vosk_model = Model(model_path)
-        self.recognizer = KaldiRecognizer(self.vosk_model, SAMPLERATE)
+        if self.engine == ENGINE_VOSK:
+            print(f"Loading Vosk model for {self.from_lang}...")
+            model_name = VOSK_MODELS.get(self.from_lang) or VOSK_MODELS.get(self.from_lang[:2])
+            if not model_name:
+                raise ValueError(f"No Vosk model for '{self.from_lang}'. Supported: {', '.join(VOSK_MODELS.keys())}.")
+            model_path = f"models/{model_name}"
+            if not os.path.exists(model_path):
+                from setup_models import download_vosk_model
+                download_vosk_model(model_name)
+            self.vosk_model = Model(model_path)
+            self.recognizer = KaldiRecognizer(self.vosk_model, SAMPLERATE)
+        else:
+            try:
+                import whisper
+            except ImportError:
+                print("\nERROR: Whisper not installed. Run: pip install openai-whisper\n")
+                sys.exit(1)
+            
+            model_size = "base" if self.engine == ENGINE_WHISPER_LITE else "medium"
+            print(f"Loading Whisper model ({model_size})...")
+            self.whisper_model = whisper.load_model(model_size)
+            self.whisper_buffer = []
 
         print("Loading Silero VAD...")
         self.vad_model, self.utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
@@ -363,8 +390,6 @@ class SpeechTranslator:
         while self.is_running:
             try:
                 chunk = self.audio_queue.get(timeout=1.0)
-
-                audio_int16 = (chunk * 32768).astype(np.int16)
                 audio_float32 = chunk.flatten().astype(np.float32)
 
                 with torch.no_grad():
@@ -374,15 +399,30 @@ class SpeechTranslator:
                     if not self.speech_detected:
                         self.speech_detected = True
                     self.silence_count = 0
+                    if self.engine != ENGINE_VOSK:
+                        self.whisper_buffer.append(audio_float32)
                 else:
                     if self.speech_detected:
                         self.silence_count += 1
+                        if self.engine != ENGINE_VOSK:
+                            self.whisper_buffer.append(audio_float32)
+
                         if self.silence_count > SILENCE_CHUNKS:
                             self.speech_detected = False
                             self.silence_count = 0
+                            
+                            text = ""
+                            if self.engine == ENGINE_VOSK:
+                                final_res = json.loads(self.recognizer.FinalResult())
+                                text = final_res.get("text", "")
+                            else:
+                                # Process accumulated buffer with Whisper
+                                if self.whisper_buffer:
+                                    audio_data = np.concatenate(self.whisper_buffer)
+                                    self.whisper_buffer = []
+                                    result = self.whisper_model.transcribe(audio_data, language=self.from_lang)
+                                    text = result.get("text", "").strip()
 
-                            final_res = json.loads(self.recognizer.FinalResult())
-                            text = final_res.get("text", "")
                             if text:
                                 translation = self.translate(text)
                                 print(f"\r{' ' * 80}\r", end="")
@@ -390,20 +430,23 @@ class SpeechTranslator:
                                 print(f"TRAN: {translation}")
                                 print("-" * 30)
 
-                if self.recognizer.AcceptWaveform(audio_int16.tobytes()):
-                    res = json.loads(self.recognizer.Result())
-                    text = res.get("text", "")
-                    if text and not self.speech_detected:
-                        translation = self.translate(text)
-                        print(f"\r{' ' * 80}\r", end="")
-                        print(f"USER: {text}")
-                        print(f"TRAN: {translation}")
-                        print("-" * 30)
-                else:
-                    partial = json.loads(self.recognizer.PartialResult())
-                    partial_text = partial.get("partial", "")
-                    if partial_text:
-                        print(f"\r>> {partial_text}", end="", flush=True)
+                # Real-time partial results only for Vosk
+                if self.engine == ENGINE_VOSK:
+                    audio_int16 = (chunk * 32768).astype(np.int16)
+                    if self.recognizer.AcceptWaveform(audio_int16.tobytes()):
+                        res = json.loads(self.recognizer.Result())
+                        text = res.get("text", "")
+                        if text and not self.speech_detected:
+                            translation = self.translate(text)
+                            print(f"\r{' ' * 80}\r", end="")
+                            print(f"USER: {text}")
+                            print(f"TRAN: {translation}")
+                            print("-" * 30)
+                    else:
+                        partial = json.loads(self.recognizer.PartialResult())
+                        partial_text = partial.get("partial", "")
+                        if partial_text:
+                            print(f"\r>> {partial_text}", end="", flush=True)
 
             except queue.Empty:
                 continue
@@ -485,17 +528,20 @@ if __name__ == "__main__":
     parser.add_argument("--loopback", action="store_true", help="Capture from default playback (Discord, etc.) - Windows only")
     parser.add_argument("--loopback-device", type=int, default=None, metavar="ID", help="Loopback device index (use list_devices.py to see)")
     parser.add_argument("--no-menu", action="store_true", help="Skip interactive menu, use defaults for audio source")
+    parser.add_argument("--engine", choices=[ENGINE_VOSK, ENGINE_WHISPER, ENGINE_WHISPER_LITE], default=ENGINE_VOSK, help="Speech recognition engine")
     
     args = parser.parse_args()
     
     from_lang, to_lang = args.from_lang, args.to_lang
     device_id, loopback = args.device, args.loopback
     loopback_device_index = args.loopback_device
+    engine = args.engine
+
     if not args.no_menu and device_id is None and not args.loopback and loopback_device_index is None and sys.stdin.isatty():
-        from_lang, to_lang, device_id, loopback, loopback_device_index = _interactive_menu(from_lang, to_lang)
+        from_lang, to_lang, device_id, loopback, loopback_device_index, engine = _interactive_menu(from_lang, to_lang)
     else:
         if loopback_device_index is not None:
             loopback = True
         
-    translator = SpeechTranslator(from_lang, to_lang, device_id, loopback, loopback_device_index)
+    translator = SpeechTranslator(from_lang, to_lang, device_id, loopback, loopback_device_index, engine)
     translator.start()

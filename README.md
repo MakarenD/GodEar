@@ -7,7 +7,12 @@
 <a name="english"></a>
 ## English
 
-This project provides a fast speech-to-text tool with real-time translation. Speech recognition (Vosk) runs offline; translation uses Google Translate (internet required). It can translate your microphone OR the audio coming from your computer (e.g., from Zoom, YouTube, or a browser).
+This project provides a fast speech-to-text tool with real-time translation. It supports multiple recognition engines including **Vosk** (fast, offline) and **OpenAI Whisper** (high accuracy). It can translate your microphone OR the audio coming from your computer (e.g., from Zoom, YouTube, or a browser).
+
+### Key Features
+- **Multiple Engines**: Choose between `Vosk` (real-time partials), `Whisper Medium` (highest accuracy), and `Whisper Lite/Base` (balanced).
+- **Fast Response**: Optimized silence detection (~0.22s) for quicker translation delivery.
+- **Native Loopback**: Capture system audio directly on macOS (ScreenCaptureKit), Windows (WASAPI), and Linux (Monitor).
 
 ### Setup
 
@@ -30,51 +35,49 @@ Or manually:
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
-2. **Download Models** (en, ru, de by default; add more in setup_models.py):
+2. **Download Models** (for Vosk):
    ```bash
    python3 setup_models.py
    ```
+   *Note: Whisper models are downloaded automatically on first run.*
+
+### Recognition Engines
+You can choose the engine via the interactive menu or the `--engine` flag:
+- **Vosk** (`--engine vosk`): Extremely fast, low latency, shows partial results as you speak.
+- **Whisper Medium** (`--engine whisper`): Best accuracy, requires more CPU/GPU resources.
+- **Whisper Lite** (`--engine whisper-lite`): Faster than Medium, uses the `base` model.
 
 ### Capturing System Audio (Discord, Zoom, YouTube, etc.)
-By default, the script listens to your microphone. To translate audio from Discord calls, Zoom, YouTube, or other apps:
+Use the `--loopback` flag to capture audio directly from your speakers/playback:
 
-#### 🪟 Windows – **Easiest: `--loopback` (no virtual cable)**
-Captures directly from your default playback device:
+#### 🪟 Windows (WASAPI)
 ```powershell
 python main.py ru de --loopback
 ```
 
-#### 🍏 macOS – **New: `--loopback` (ScreenCaptureKit)**
-No virtual cable needed on macOS 12.3+! Captures system audio directly:
+#### 🍏 macOS (ScreenCaptureKit)
+Works on macOS 12.3+ without virtual cables:
 ```bash
 python main.py ru de --loopback
 ```
-*Note: You must grant **Screen Recording** permission to your terminal when prompted.*
+*Note: Grant **Screen Recording** permission to your terminal.*
 
-#### 🐧 Linux – **New: `--loopback` (Monitor source)**
-Automatically finds and uses the "monitor" source of your PulseAudio/PipeWire output:
+#### 🐧 Linux (Monitor source)
 ```bash
 python main.py ru de --loopback
 ```
-
-#### Alternative: Virtual Cables (All OS)
-If `--loopback` doesn't work for your setup:
-- **Windows**: Use **VB-Audio Virtual Cable**.
-- **macOS**: Use **BlackHole 2ch**.
-- **Linux**: Select a specific device ID from `python list_devices.py`.
 
 ### Usage
-**Interactive (recommended):** Run without arguments to choose audio source and languages:
+**Interactive (recommended):**
 ```bash
 python main.py
 ```
 
 **Command line:**
 ```bash
-python main.py en ru                    # Microphone
-python main.py en ru --loopback         # Discord/system audio (Windows)
-python main.py en ru --device [ID]      # Specific device
-python main.py en ru --no-menu          # Skip menu, use defaults
+python main.py en ru --engine whisper --loopback       # Full Whisper (Medium model)
+python main.py en ru --engine whisper-lite --loopback  # Whisper Lite (Base model)
+python main.py en ru --engine vosk --no-menu           # Vosk (Fast)
 ```
 
 ---
@@ -82,7 +85,12 @@ python main.py en ru --no-menu          # Skip menu, use defaults
 <a name="russian"></a>
 ## Русский
 
-Этот проект — быстрый инструмент для распознавания и перевода речи в реальном времени. Распознавание (Vosk) работает офлайн; перевод использует Google Translate (требуется интернет). Он может переводить как ваш микрофон, так и звук, исходящий из компьютера (например, из Zoom, YouTube или браузера).
+Этот проект — инструмент для распознавания и перевода речи в реальном времени. Поддерживает несколько движков: **Vosk** (быстрый, офлайн) и **OpenAI Whisper** (высокая точность). Переводит как микрофон, так и системный звук (Zoom, YouTube, игры).
+
+### Основные возможности
+- **Несколько движков**: Выбор между `Vosk` (мгновенно), `Whisper Medium` (максимальная точность) и `Whisper Lite/Base` (быстрее оригинала).
+- **Быстрый отклик**: Оптимизированное детектирование пауз (~0.22 сек) для частого вывода перевода.
+- **Нативный захват**: Прямой перехват звука системы на macOS (ScreenCaptureKit), Windows (WASAPI) и Linux (Monitor).
 
 ### Установка
 
@@ -98,52 +106,61 @@ chmod +x setup.sh
 ```
 
 Или вручную:
-1. **Установка зависимостей**: Требуется Python 3.9+.
+1. **Установка зависимостей**:
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
-2. **Загрузка моделей**:
+2. **Загрузка моделей** (для Vosk):
    ```bash
    python3 setup_models.py
    ```
+   *Примечание: Модели Whisper скачиваются автоматически при первом запуске.*
+
+### Движки распознавания
+Выбор через интерактивное меню или флаг `--engine`:
+- **Vosk** (`--engine vosk`): Очень быстрый, выводит текст "на лету" (частичные результаты).
+- **Whisper Medium** (`--engine whisper`): Самая высокая точность, требует больше ресурсов CPU/GPU.
+- **Whisper Lite** (`--engine whisper-lite`): Быстрее версии Medium, использует модель `base`.
 
 ### Перехват системного звука (Discord, Zoom, YouTube и др.)
-По умолчанию скрипт слушает микрофон. Чтобы переводить звук из Discord, Zoom, YouTube и других приложений:
+Используйте флаг `--loopback` для захвата звука напрямую из системы:
 
-#### 🪟 Windows – **Проще всего: `--loopback`**
-Захват напрямую с устройства воспроизведения:
+#### 🪟 Windows (WASAPI)
 ```powershell
 python main.py ru de --loopback
 ```
 
-#### 🍏 macOS – **Новое: `--loopback` (ScreenCaptureKit)**
-Не нужен виртуальный кабель на macOS 12.3+! Прямой захват звука системы:
+#### 🍏 macOS (ScreenCaptureKit)
+Работает на macOS 12.3+ без виртуальных кабелей:
 ```bash
 python main.py ru de --loopback
 ```
-*Внимание: нужно разрешить «Запись экрана» (Screen Recording) для вашего терминала при появлении запроса.*
+*Внимание: разрешите «Запись экрана» (Screen Recording) для терминала.*
 
-#### 🐧 Linux – **Новое: `--loopback` (Monitor source)**
-Автоматический поиск и захват с "monitor" источника вашего PulseAudio/PipeWire:
+#### 🐧 Linux (Monitor source)
 ```bash
 python main.py ru de --loopback
 ```
-
-#### Альтернатива: виртуальные кабели (Все ОС)
-Если `--loopback` не работает:
-- **Windows**: **VB-Audio Virtual Cable**.
-- **macOS**: **BlackHole 2ch**.
-- **Linux**: Выберите ID конкретного устройства через `python list_devices.py`.
 
 ### Использование
-**Интерактивно:** `python main.py` — выберите источник звука и языки.
+**Интерактивно (рекомендуется):**
+```bash
+python main.py
+```
 
-**Из командной строки:** `python main.py en ru`, `--loopback`, `--device [ID]`, `--no-menu`
+**Из командной строки:**
+```bash
+python main.py en ru --engine whisper --loopback       # Полный Whisper (модель Medium)
+python main.py en ru --engine whisper-lite --loopback  # Whisper Lite (модель Base)
+python main.py en ru --engine vosk --no-menu           # Vosk (Быстрый)
+```
+
+---
 
 ## Requirements / Требования
-- `vosk`, `deep-translator`, `silero-vad`, `sounddevice`, `numpy`, `torch`, `torchaudio`, `tqdm`, `requests`
+- `vosk`, `openai-whisper`, `deep-translator`, `silero-vad`, `sounddevice`, `numpy`, `torch`, `torchaudio`, `tqdm`, `requests`
 
-**Note:** Translation uses deep-translator (Google Translate API) and requires an internet connection. Speech recognition (Vosk) remains offline.
+**Note:** Translation uses Google Translate API and requires internet. Speech recognition remains local.
