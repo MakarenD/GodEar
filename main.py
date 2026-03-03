@@ -5,6 +5,7 @@ import sounddevice as sd
 import numpy as np
 import torch
 import json
+import argparse
 from vosk import Model, KaldiRecognizer
 import argostranslate.package
 import argostranslate.translate
@@ -20,9 +21,10 @@ VOSK_MODEL_EN = "models/vosk-model-small-en-us-0.15"
 VOSK_MODEL_RU = "models/vosk-model-small-ru-0.22"
 
 class SpeechTranslator:
-    def __init__(self, from_lang="en", to_lang="ru"):
+    def __init__(self, from_lang="en", to_lang="ru", device_id=None):
         self.from_lang = from_lang
         self.to_lang = to_lang
+        self.device_id = device_id
         
         print(f"Loading Vosk model for {from_lang}...")
         model_path = VOSK_MODEL_EN if from_lang == "en" else VOSK_MODEL_RU
@@ -114,17 +116,20 @@ class SpeechTranslator:
 
     def start(self):
         try:
-            with sd.InputStream(samplerate=SAMPLERATE, channels=1, callback=self.audio_callback, blocksize=CHUNK_SIZE):
+            device_name = sd.query_devices(self.device_id, 'input')['name'] if self.device_id is not None else "Default"
+            print(f"Starting audio stream on device: {device_name} (ID: {self.device_id})")
+            with sd.InputStream(device=self.device_id, samplerate=SAMPLERATE, channels=1, callback=self.audio_callback, blocksize=CHUNK_SIZE):
                 self.process_loop()
         except Exception as e:
             print(f"Failed to start audio stream: {e}")
 
 if __name__ == "__main__":
-    from_lang = "en"
-    to_lang = "ru"
-    if len(sys.argv) > 2:
-        from_lang = sys.argv[1]
-        to_lang = sys.argv[2]
+    parser = argparse.ArgumentParser(description="Real-time Speech Translation")
+    parser.add_argument("from_lang", nargs="?", default="en", help="Source language (en/ru)")
+    parser.add_argument("to_lang", nargs="?", default="ru", help="Target language (en/ru)")
+    parser.add_argument("--device", type=int, default=None, help="Audio input device ID (use list_devices.py to find)")
+    
+    args = parser.parse_args()
         
-    translator = SpeechTranslator(from_lang, to_lang)
+    translator = SpeechTranslator(args.from_lang, args.to_lang, args.device)
     translator.start()

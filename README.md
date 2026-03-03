@@ -7,10 +7,7 @@
 <a name="english"></a>
 ## English
 
-This project provides a fast, offline speech-to-text and translation tool using:
-- **Vosk**: Speech recognition (ASR) using lightweight models for speed.
-- **Silero VAD**: Voice Activity Detection to accurately segment sentences.
-- **Argos Translate**: Fully offline machine translation based on CTranslate2.
+This project provides a fast, offline speech-to-text and translation tool. It can translate your microphone OR the audio coming from your computer (e.g., from Zoom, YouTube, or a browser).
 
 ### Setup
 
@@ -21,52 +18,56 @@ chmod +x setup.sh
 ```
 
 Or manually:
-1. **Install Dependencies**:
-   Ensure you have Python 3.9+ installed. It is recommended to use a virtual environment.
+1. **Install Dependencies**: Python 3.9+ is required.
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
-
 2. **Download Models**:
-   Run the setup script to download Vosk and Argos Translate models.
    ```bash
    python3 setup_models.py
    ```
 
+### Capturing System Audio (Translate your Interviewer)
+By default, the script listens to your microphone. To translate your собеседник (interviewer/speaker), you need to route system audio to a virtual input:
+
+#### 🍏 macOS
+1. Install **BlackHole 2ch**: `brew install blackhole-2ch`.
+2. Open **Audio MIDI Setup** app -> Create **Multi-Output Device**.
+3. Check both your speakers/headphones AND BlackHole 2ch.
+4. Set this Multi-Output Device as your system **Output** in Sound Settings.
+
+#### 🪟 Windows
+1. Install **VB-Audio Virtual Cable**.
+2. Set "CABLE Input" as your Default Playback Device.
+3. In this app, use `--device [ID]` where ID corresponds to "CABLE Output".
+*Alternative:* Enable **"Stereo Mix"** in Sound Control Panel -> Recording tab.
+
+#### 🐧 Linux (PulseAudio/PipeWire)
+Use the monitor source of your output device:
+```bash
+pactl list sources | grep ".monitor"
+```
+
 ### Usage
-
-Run the main script:
-```bash
-python3 main.py [source_lang] [target_lang]
-```
-Default is `en ru` (English to Russian).
-
-Example:
-```bash
-python3 main.py en ru
-```
-
-- **Partial Results**: Shown as `>> text...` while you speak.
-- **Final Translation**: Printed as `USER: [original]` and `TRAN: [translated]` after a short pause (VAD detected).
-
-### Audio Issues
-If you have multiple microphones, use `list_devices.py` to see available IDs.
-```bash
-python3 list_devices.py
-```
+1. Find the ID of your virtual device:
+   ```bash
+   python3 list_devices.py
+   ```
+2. Run the translator with the device ID:
+   ```bash
+   python3 main.py en ru --device [ID]
+   ```
+   *Example:* `python3 main.py en ru --device 2`
 
 ---
 
 <a name="russian"></a>
 ## Русский
 
-Этот проект представляет собой быстрый офлайн-инструмент для распознавания и перевода речи с использованием:
-- **Vosk**: Распознавание речи (ASR) с использованием легковесных моделей для максимальной скорости.
-- **Silero VAD**: Детектор активности голоса для точного разделения на предложения.
-- **Argos Translate**: Полностью автономный машинный перевод на базе CTranslate2.
+Этот проект — быстрый офлайн-инструмент для распознавания и перевода речи. Он может переводить как ваш микрофон, так и звук, исходящий из компьютера (например, из Zoom, YouTube или браузера).
 
 ### Установка
 
@@ -77,50 +78,49 @@ chmod +x setup.sh
 ```
 
 Или вручную:
-1. **Установка зависимостей**:
-   Убедитесь, что у вас установлен Python 3.9+. Рекомендуется использовать виртуальное окружение.
+1. **Установка зависимостей**: Требуется Python 3.9+.
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    pip install --upgrade pip
    pip install -r requirements.txt
    ```
-
 2. **Загрузка моделей**:
-   Запустите скрипт настройки для загрузки моделей Vosk и Argos Translate.
    ```bash
    python3 setup_models.py
    ```
 
+### Перехват системного звука (Перевод собеседника)
+По умолчанию скрипт слушает микрофон. Чтобы переводить голос собеседника, нужно направить системный звук на виртуальный вход:
+
+#### 🍏 macOS
+1. Установите **BlackHole 2ch**: `brew install blackhole-2ch`.
+2. Откройте приложение **«Настройка Audio-MIDI»** -> Создайте **«Устройство с несколькими выходами»**.
+3. Отметьте ваши динамики/наушники И BlackHole 2ch.
+4. Выберите это устройство как основной **Выход** (Output) в системных настройках звука.
+
+#### 🪟 Windows
+1. Установите **VB-Audio Virtual Cable**.
+2. Выберите "CABLE Input" как устройство воспроизведения по умолчанию.
+3. В приложении используйте `--device [ID]`, где ID соответствует "CABLE Output".
+*Альтернатива:* Включите **«Стерео микшер»** (Stereo Mix) в Панели управления звуком -> Вкладка «Запись».
+
+#### 🐧 Linux (PulseAudio/PipeWire)
+Используйте "monitor" версию вашего устройства вывода:
+```bash
+pactl list sources | grep ".monitor"
+```
+
 ### Использование
-
-Запустите основной скрипт:
-```bash
-python3 main.py [исходный_язык] [целевой_язык]
-```
-По умолчанию используется `en ru` (Английский -> Русский).
-
-Пример:
-```bash
-python3 main.py en ru
-```
-
-- **Промежуточные результаты**: Отображаются как `>> текст...` во время речи.
-- **Финальный перевод**: Выводится в формате `USER: [оригинал]` и `TRAN: [перевод]` после обнаружения паузы (VAD).
-
-### Проблемы со звуком
-Если у вас несколько микрофонов, используйте `list_devices.py`, чтобы увидеть доступные ID устройств.
-```bash
-python3 list_devices.py
-```
+1. Найдите ID виртуального устройства:
+   ```bash
+   python3 list_devices.py
+   ```
+2. Запустите переводчик с указанием ID:
+   ```bash
+   python3 main.py en ru --device [ID]
+   ```
+   *Пример:* `python3 main.py en ru --device 2`
 
 ## Requirements / Требования
-- `vosk`
-- `argostranslate`
-- `silero-vad`
-- `sounddevice`
-- `numpy`
-- `torch`
-- `torchaudio`
-- `tqdm`
-- `requests`
+- `vosk`, `argostranslate`, `silero-vad`, `sounddevice`, `numpy`, `torch`, `torchaudio`, `tqdm`, `requests`
