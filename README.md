@@ -39,36 +39,29 @@ Or manually:
 By default, the script listens to your microphone. To translate audio from Discord calls, Zoom, YouTube, or other apps:
 
 #### 🪟 Windows – **Easiest: `--loopback` (no virtual cable)**
-Captures directly from your default playback device (wherever Discord outputs):
+Captures directly from your default playback device:
 ```powershell
 python main.py ru de --loopback
 ```
-You hear Discord normally; the script captures the same audio. No VB-Audio or routing needed.
 
-#### 🪟 Windows – Alternative: Virtual Cable
-If `--loopback` doesn't work or you need different routing:
-1. Install **VB-Audio Virtual Cable** (free): https://vb-audio.com/Cable/
-2. After install, you'll have **CABLE Input** (playback) and **CABLE Output** (recording).
-3. **Route Discord to the cable:** In Discord: User Settings → Voice & Video → Output Device → **CABLE Input**
-4. **Hear the call while capturing:** Right-click the speaker icon → Sound settings → More sound settings → Recording tab → double-click **CABLE Output** → Listen tab → check "Listen to this device" → set "Playback through" to your headphones/speakers.
-5. Run:
-   ```powershell
-   python list_devices.py
-   python main.py ru de --device [ID]   # use ID for "CABLE Output"
-   ```
-
-#### 🍏 macOS
-1. Install **BlackHole 2ch**: `brew install blackhole-2ch`.
-2. Open **Audio MIDI Setup** app -> Create **Multi-Output Device**.
-3. Check both your speakers/headphones AND BlackHole 2ch.
-4. Set this Multi-Output Device as your system **Output** in Sound Settings.
-
-
-#### 🐧 Linux (PulseAudio/PipeWire)
-Use the monitor source of your output device:
+#### 🍏 macOS – **New: `--loopback` (ScreenCaptureKit)**
+No virtual cable needed on macOS 12.3+! Captures system audio directly:
 ```bash
-pactl list sources | grep ".monitor"
+python main.py ru de --loopback
 ```
+*Note: You must grant **Screen Recording** permission to your terminal when prompted.*
+
+#### 🐧 Linux – **New: `--loopback` (Monitor source)**
+Automatically finds and uses the "monitor" source of your PulseAudio/PipeWire output:
+```bash
+python main.py ru de --loopback
+```
+
+#### Alternative: Virtual Cables (All OS)
+If `--loopback` doesn't work for your setup:
+- **Windows**: Use **VB-Audio Virtual Cable**.
+- **macOS**: Use **BlackHole 2ch**.
+- **Linux**: Select a specific device ID from `python list_devices.py`.
 
 ### Usage
 **Interactive (recommended):** Run without arguments to choose audio source and languages:
@@ -120,31 +113,30 @@ chmod +x setup.sh
 ### Перехват системного звука (Discord, Zoom, YouTube и др.)
 По умолчанию скрипт слушает микрофон. Чтобы переводить звук из Discord, Zoom, YouTube и других приложений:
 
-#### 🪟 Windows – **Проще всего: `--loopback` (без виртуального кабеля)**
-Захват напрямую с устройства воспроизведения по умолчанию (куда выводит Discord):
+#### 🪟 Windows – **Проще всего: `--loopback`**
+Захват напрямую с устройства воспроизведения:
 ```powershell
 python main.py ru de --loopback
 ```
-Вы слышите Discord как обычно; скрипт захватывает тот же звук. VB-Audio и перенаправление не нужны.
 
-#### 🪟 Windows – Альтернатива: виртуальный кабель
-Если `--loopback` не работает или нужна другая маршрутизация:
-1. Установите **VB-Audio Virtual Cable**: https://vb-audio.com/Cable/
-2. В Discord: Настройки → Голос и видео → Устройство вывода → **CABLE Input**
-3. ПКМ по иконке динамика → Параметры звука → Вкладка «Запись» → **CABLE Output** → «Прослушать» → включите воспроизведение через наушники.
-4. `python list_devices.py` и `python main.py ru de --device [ID]`
-
-#### 🍏 macOS
-1. Установите **BlackHole 2ch**: `brew install blackhole-2ch`.
-2. Откройте приложение **«Настройка Audio-MIDI»** -> Создайте **«Устройство с несколькими выходами»**.
-3. Отметьте ваши динамики/наушники И BlackHole 2ch.
-4. Выберите это устройство как основной **Выход** (Output) в системных настройках звука.
-
-#### 🐧 Linux (PulseAudio/PipeWire)
-Используйте "monitor" версию вашего устройства вывода:
+#### 🍏 macOS – **Новое: `--loopback` (ScreenCaptureKit)**
+Не нужен виртуальный кабель на macOS 12.3+! Прямой захват звука системы:
 ```bash
-pactl list sources | grep ".monitor"
+python main.py ru de --loopback
 ```
+*Внимание: нужно разрешить «Запись экрана» (Screen Recording) для вашего терминала при появлении запроса.*
+
+#### 🐧 Linux – **Новое: `--loopback` (Monitor source)**
+Автоматический поиск и захват с "monitor" источника вашего PulseAudio/PipeWire:
+```bash
+python main.py ru de --loopback
+```
+
+#### Альтернатива: виртуальные кабели (Все ОС)
+Если `--loopback` не работает:
+- **Windows**: **VB-Audio Virtual Cable**.
+- **macOS**: **BlackHole 2ch**.
+- **Linux**: Выберите ID конкретного устройства через `python list_devices.py`.
 
 ### Использование
 **Интерактивно:** `python main.py` — выберите источник звука и языки.

@@ -3,6 +3,9 @@ deep-translator
 silero-vad
 sounddevice
 PyAudioWPatch; sys_platform == "win32"
+pyobjc-core; sys_platform == "darwin"
+pyobjc-framework-ScreenCaptureKit; sys_platform == "darwin"
+pyobjc-framework-CoreMedia; sys_platform == "darwin"
 numpy
 torch
 torchaudio
