@@ -1,6 +1,3 @@
-
-import argostranslate.package
-import argostranslate.translate
 import os
 import requests
 import zipfile
@@ -32,28 +29,8 @@ def download_vosk_model(model_name="vosk-model-small-en-us-0.15"):
     os.remove(zip_path)
     return dest
 
-def install_argos_models(from_code="en", to_code="ru"):
-    print(f"Installing Argos Translate models for {from_code} -> {to_code}...")
-    argostranslate.package.update_package_index()
-    available_packages = argostranslate.package.get_available_packages()
-    
-    # English to Russian
-    package_to_install = next(
-        filter(
-            lambda x: x.from_code == from_code and x.to_code == to_code, available_packages
-        )
-    )
-    argostranslate.package.install_from_path(package_to_install.download())
-    
-    # Russian to English (optional but good to have)
-    package_to_install = next(
-        filter(
-            lambda x: x.from_code == to_code and x.to_code == from_code, available_packages
-        )
-    )
-    argostranslate.package.install_from_path(package_to_install.download())
-
 if __name__ == "__main__":
     download_vosk_model("vosk-model-small-en-us-0.15")
     download_vosk_model("vosk-model-small-ru-0.22")
-    install_argos_models("en", "ru")
+    download_vosk_model("vosk-model-small-de-0.15")
+    print("Translation uses deep-translator (Google Translate API) - no model download needed.")

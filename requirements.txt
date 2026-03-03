@@ -1,8 +1,8 @@
-
 vosk
-argostranslate
+deep-translator
 silero-vad
 sounddevice
+PyAudioWPatch; sys_platform == "win32"
 numpy
 torch
 torchaudio
