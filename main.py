@@ -12,6 +12,15 @@ from vosk import Model, KaldiRecognizer
 from deep_translator import GoogleTranslator
 import threading
 import time
+import shutil
+
+def get_base_path():
+    """Get the absolute path to the directory containing the executable or script."""
+    if getattr(sys, 'frozen', False):
+        # Running as a bundled executable
+        return os.path.dirname(sys.executable)
+    # Running in normal Python environment
+    return os.path.dirname(os.path.abspath(__file__))
 
 # Parameters
 SAMPLERATE = 16000
@@ -316,15 +325,21 @@ class SpeechTranslator:
         self.loopback_device_index = loopback_device_index
         self.engine = engine
 
+        base_dir = get_base_path()
+        models_dir = os.path.join(base_dir, "models")
+
         if self.engine == ENGINE_VOSK:
             print(f"Loading Vosk model for {self.from_lang}...")
             model_name = VOSK_MODELS.get(self.from_lang) or VOSK_MODELS.get(self.from_lang[:2])
             if not model_name:
                 raise ValueError(f"No Vosk model for '{self.from_lang}'. Supported: {', '.join(VOSK_MODELS.keys())}.")
-            model_path = f"models/{model_name}"
+            
+            model_path = os.path.join(models_dir, model_name)
             if not os.path.exists(model_path):
-                from setup_models import download_vosk_model
-                download_vosk_model(model_name)
+                print(f"Model not found at {model_path}. Downloading...")
+                import setup_models
+                setup_models.download_vosk_model(model_name, models_dir)
+            
             self.vosk_model = Model(model_path)
             self.recognizer = KaldiRecognizer(self.vosk_model, SAMPLERATE)
         else:
@@ -335,11 +350,19 @@ class SpeechTranslator:
                 sys.exit(1)
             
             model_size = "base" if self.engine == ENGINE_WHISPER_LITE else "medium"
+            # Adjust cache dir for whisper to be portable too if possible
+            # Whisper uses ~/.cache/whisper by default. 
+            # For now we leave it, but we could set XDG_CACHE_HOME.
             print(f"Loading Whisper model ({model_size})...")
             self.whisper_model = whisper.load_model(model_size)
             self.whisper_buffer = []
 
         print("Loading Silero VAD...")
+        # For Silero VAD, we can also try to cache it locally
+        torch_cache_dir = os.path.join(base_dir, ".cache", "torch")
+        os.makedirs(torch_cache_dir, exist_ok=True)
+        os.environ['TORCH_HOME'] = torch_cache_dir
+        
         self.vad_model, self.utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
                                                   model='silero_vad',
                                                   force_reload=False,
@@ -353,6 +376,7 @@ class SpeechTranslator:
         self.is_running = False
         self.speech_detected = False
         self.silence_count = 0
+        self.last_text_length = 0
 
     def audio_callback(self, indata, frames, time, status):
         if status:
@@ -382,6 +406,21 @@ class SpeechTranslator:
         if not text.strip():
             return ""
         return self.translator.translate(text)
+
+    def _clear_line(self):
+        """Clear the current line(s) taking wrapping into account."""
+        if self.last_text_length > 0:
+            columns, _ = shutil.get_terminal_size()
+            lines = (self.last_text_length + columns - 1) // columns
+            
+            # Clear current line
+            sys.stdout.write("\r\033[K")
+            # Move up and clear previous lines if wrapped
+            for _ in range(lines - 1):
+                sys.stdout.write("\033[F\033[K")
+            
+            sys.stdout.flush()
+            self.last_text_length = 0
 
     def process_loop(self):
         print("\n--- Listening (Press Ctrl+C to stop) ---\n")
@@ -425,7 +464,7 @@ class SpeechTranslator:
 
                             if text:
                                 translation = self.translate(text)
-                                print(f"\r{' ' * 80}\r", end="")
+                                self._clear_line()
                                 print(f"USER: {text}")
                                 print(f"TRAN: {translation}")
                                 print("-" * 30)
@@ -438,7 +477,7 @@ class SpeechTranslator:
                         text = res.get("text", "")
                         if text and not self.speech_detected:
                             translation = self.translate(text)
-                            print(f"\r{' ' * 80}\r", end="")
+                            self._clear_line()
                             print(f"USER: {text}")
                             print(f"TRAN: {translation}")
                             print("-" * 30)
@@ -446,13 +485,20 @@ class SpeechTranslator:
                         partial = json.loads(self.recognizer.PartialResult())
                         partial_text = partial.get("partial", "")
                         if partial_text:
-                            print(f"\r>> {partial_text}", end="", flush=True)
+                            # Instead of print with \r, we need more control
+                            display_text = f">> {partial_text}"
+                            self._clear_line()
+                            sys.stdout.write(display_text)
+                            sys.stdout.flush()
+                            self.last_text_length = len(display_text)
 
             except queue.Empty:
                 continue
             except KeyboardInterrupt:
+                self._clear_line()
                 break
             except Exception as e:
+                self._clear_line()
                 print(f"\nError in loop: {e}")
 
     def start(self):

@@ -1,0 +1,74 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }}, Py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.11']
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -r requirements.txt
+
+    - name: Run Build Script
+      shell: bash
+      run: |
+        # We use the build.py script we created to ensure consistency
+        python build.py
+        
+    - name: Rename Artifact for Release
+      shell: bash
+      run: |
+        # Identify the zip file created by build.py and rename it to include python version
+        # build.py creates: speech-to-text-linux.zip, speech-to-text-windows.zip, or speech-to-text-darwin.zip
+        OS_TYPE=$(python -c "import platform; print(platform.system().lower())")
+        # In case platform.system() returns 'Darwin' -> 'darwin', 'Windows' -> 'windows', 'Linux' -> 'linux'
+        # build.py uses this format for zip naming.
+        OLD_NAME="releases/speech-to-text-${OS_TYPE}.zip"
+        NEW_NAME="speech-to-text-${OS_TYPE}-py${{ matrix.python-version }}.zip"
+        mv "$OLD_NAME" "$NEW_NAME"
+        echo "ASSET_PATH=$NEW_NAME" >> $GITHUB_ENV
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: speech-to-text-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: ${{ env.ASSET_PATH }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            speech-to-text-*-py3.9/*.zip
+            speech-to-text-*-py3.11/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

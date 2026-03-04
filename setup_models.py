@@ -3,15 +3,18 @@ import requests
 import zipfile
 from tqdm import tqdm
 
-def download_vosk_model(model_name="vosk-model-small-en-us-0.15"):
+def download_vosk_model(model_name="vosk-model-small-en-us-0.15", models_dir=None):
+    if models_dir is None:
+        models_dir = "models"
+    
     url = f"https://alphacephei.com/vosk/models/{model_name}.zip"
-    dest = f"models/{model_name}"
+    dest = os.path.join(models_dir, model_name)
     if os.path.exists(dest):
         print(f"Vosk model {model_name} already exists.")
         return dest
     
-    os.makedirs("models", exist_ok=True)
-    zip_path = f"models/{model_name}.zip"
+    os.makedirs(models_dir, exist_ok=True)
+    zip_path = os.path.join(models_dir, f"{model_name}.zip")
     
     print(f"Downloading Vosk model from {url}...")
     response = requests.get(url, stream=True)
@@ -24,7 +27,7 @@ def download_vosk_model(model_name="vosk-model-small-en-us-0.15"):
             
     print("Extracting...")
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall("models")
+        zip_ref.extractall(models_dir)
     
     os.remove(zip_path)
     return dest

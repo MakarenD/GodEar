@@ -14,6 +14,13 @@ This project provides a fast speech-to-text tool with real-time translation. It 
 - **Fast Response**: Optimized silence detection (~0.22s) for quicker translation delivery.
 - **Native Loopback**: Capture system audio directly on macOS (ScreenCaptureKit), Windows (WASAPI), and Linux (Monitor).
 
+### 🚀 Quick Start (Pre-built Binaries)
+If you don't want to install Python and dependencies, you can download a standalone version:
+1. Go to the **Releases** section on GitHub.
+2. Download the archive for your operating system (e.g., `speech-to-text-macos.zip` or `speech-to-text-windows.zip`).
+3. Extract the archive and run the executable file (`speech-to-text`).
+*Note: The first run will automatically download the necessary speech recognition models.*
+
 ### Setup
 
 **macOS/Linux:**
@@ -91,6 +98,13 @@ python main.py en ru --engine vosk --no-menu           # Vosk (Fast)
 - **Несколько движков**: Выбор между `Vosk` (мгновенно), `Whisper Medium` (максимальная точность) и `Whisper Lite/Base` (быстрее оригинала).
 - **Быстрый отклик**: Оптимизированное детектирование пауз (~0.22 сек) для частого вывода перевода.
 - **Нативный захват**: Прямой перехват звука системы на macOS (ScreenCaptureKit), Windows (WASAPI) и Linux (Monitor).
+
+### 🚀 Быстрый старт (Готовые сборки)
+Если вы не хотите устанавливать Python и зависимости, вы можете скачать готовую версию приложения:
+1. Перейдите в раздел **Releases** (Релизы) на GitHub.
+2. Скачайте архив для вашей операционной системы (например, `speech-to-text-macos.zip` или `speech-to-text-windows.zip`).
+3. Распакуйте архив и запустите исполняемый файл (`speech-to-text`).
+*Примечание: При первом запуске приложение автоматически скачает необходимые модели для распознавания речи.*
 
 ### Установка
 
