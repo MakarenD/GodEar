@@ -45,7 +45,7 @@ def build():
     # We check the actual distribution name (what you see in 'pip list')
     optional_distributions = [
         "torch", "tqdm", "regex", "requests", "packaging", 
-        "filelock", "numpy", "tokenizers", "openai-whisper", "vosk"
+        "filelock", "numpy", "tokenizers", "openai-whisper", "vosk", "PyQt6"
     ]
     
     metadata_flags = []
@@ -69,11 +69,13 @@ def build():
         "--hidden-import", "pyobjc",
         "--hidden-import", "torch",
         "--hidden-import", "torchaudio",
+        "--hidden-import", "PyQt6",
         "--collect-all", "vosk",
         "--collect-all", "whisper",
         "--collect-all", "deep_translator",
         "--collect-all", "torch",
-        "--collect-all", "torchaudio"
+        "--collect-all", "torchaudio",
+        "--collect-all", "PyQt6"
     ] + metadata_flags + ["main.py"]
 
     print("\nRunning PyInstaller (this will take 5-10 minutes because of torch/whisper)...")

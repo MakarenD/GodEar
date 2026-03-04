@@ -13,3 +13,4 @@ tqdm
 requests
 openai-whisper
 setuptools-rust
+PyQt6

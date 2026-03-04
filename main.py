@@ -103,7 +103,7 @@ def _get_loopback_devices():
 
 
 def _interactive_menu(from_lang, to_lang):
-    """Show menu and return (from_lang, to_lang, device_id, loopback, loopback_device_index, engine)."""
+    """Show menu and return (from_lang, to_lang, device_id, loopback, loopback_device_index, engine, show_overlay)."""
     print("\n=== Speech Translation ===")
     from_in = input(f"Source language [{from_lang}]: ").strip() or from_lang
     to_in = input(f"Target language [{to_lang}]: ").strip() or to_lang
@@ -118,6 +118,8 @@ def _interactive_menu(from_lang, to_lang):
     if engine_choice == "2": engine = ENGINE_WHISPER
     elif engine_choice == "3": engine = ENGINE_WHISPER_LITE
     
+    show_overlay = input("\nShow transparent overlay? (y/n) [n]: ").strip().lower() == "y"
+
     print("\n=== Audio Source ===")
     options = []
     option_data = []  # (device_id, loopback, loopback_device_index)
@@ -161,7 +163,7 @@ def _interactive_menu(from_lang, to_lang):
             device_id, loopback, loopback_device_index = option_data[idx - 1]
     except (ValueError, IndexError):
         pass
-    return from_lang, to_lang, device_id, loopback, loopback_device_index, engine
+    return from_lang, to_lang, device_id, loopback, loopback_device_index, engine, show_overlay
 
 
 def _get_loopback_device(device_index=None):
@@ -317,13 +319,14 @@ class MacLoopbackCapture:
 
 
 class SpeechTranslator:
-    def __init__(self, from_lang="en", to_lang="ru", device_id=None, loopback=False, loopback_device_index=None, engine="vosk"):
+    def __init__(self, from_lang="en", to_lang="ru", device_id=None, loopback=False, loopback_device_index=None, engine="vosk", overlay_window=None):
         self.from_lang = _normalize_lang(from_lang) or from_lang
         self.to_lang = _normalize_lang(to_lang) or to_lang
         self.device_id = device_id
         self.loopback = loopback
         self.loopback_device_index = loopback_device_index
         self.engine = engine
+        self.overlay_window = overlay_window
 
         base_dir = get_base_path()
         models_dir = os.path.join(base_dir, "models")
@@ -468,6 +471,9 @@ class SpeechTranslator:
                                 print(f"USER: {text}")
                                 print(f"TRAN: {translation}")
                                 print("-" * 30)
+                                if self.overlay_window:
+                                    self.overlay_window.text_updated.emit(text, "user")
+                                    self.overlay_window.text_updated.emit(translation, "tran")
 
                 # Real-time partial results only for Vosk
                 if self.engine == ENGINE_VOSK:
@@ -481,6 +487,9 @@ class SpeechTranslator:
                             print(f"USER: {text}")
                             print(f"TRAN: {translation}")
                             print("-" * 30)
+                            if self.overlay_window:
+                                self.overlay_window.text_updated.emit(text, "user")
+                                self.overlay_window.text_updated.emit(translation, "tran")
                     else:
                         partial = json.loads(self.recognizer.PartialResult())
                         partial_text = partial.get("partial", "")
@@ -491,6 +500,8 @@ class SpeechTranslator:
                             sys.stdout.write(display_text)
                             sys.stdout.flush()
                             self.last_text_length = len(display_text)
+                            if self.overlay_window:
+                                self.overlay_window.text_updated.emit(partial_text, "partial")
 
             except queue.Empty:
                 continue
@@ -575,6 +586,7 @@ if __name__ == "__main__":
     parser.add_argument("--loopback-device", type=int, default=None, metavar="ID", help="Loopback device index (use list_devices.py to see)")
     parser.add_argument("--no-menu", action="store_true", help="Skip interactive menu, use defaults for audio source")
     parser.add_argument("--engine", choices=[ENGINE_VOSK, ENGINE_WHISPER, ENGINE_WHISPER_LITE], default=ENGINE_VOSK, help="Speech recognition engine")
+    parser.add_argument("--overlay", action="store_true", help="Show transparent overlay window with translation")
     
     args = parser.parse_args()
     
@@ -582,12 +594,33 @@ if __name__ == "__main__":
     device_id, loopback = args.device, args.loopback
     loopback_device_index = args.loopback_device
     engine = args.engine
+    show_overlay = args.overlay
 
     if not args.no_menu and device_id is None and not args.loopback and loopback_device_index is None and sys.stdin.isatty():
-        from_lang, to_lang, device_id, loopback, loopback_device_index, engine = _interactive_menu(from_lang, to_lang)
+        from_lang, to_lang, device_id, loopback, loopback_device_index, engine, show_overlay = _interactive_menu(from_lang, to_lang)
     else:
         if loopback_device_index is not None:
             loopback = True
-        
-    translator = SpeechTranslator(from_lang, to_lang, device_id, loopback, loopback_device_index, engine)
-    translator.start()
+
+    overlay_window = None
+    if show_overlay:
+        try:
+            from overlay import run_overlay_app
+            app, overlay_window = run_overlay_app()
+        except ImportError:
+            print("\nERROR: PyQt6 not installed. Overlay disabled. Run: pip install PyQt6\n")
+            show_overlay = False
+
+    translator = SpeechTranslator(from_lang, to_lang, device_id, loopback, loopback_device_index, engine, overlay_window=overlay_window)
+    
+    if show_overlay:
+        # Run translator in a background thread
+        t = threading.Thread(target=translator.start, daemon=True)
+        t.start()
+        print("Overlay started. Close the overlay window or press Ctrl+C in terminal to stop.")
+        try:
+            sys.exit(app.exec())
+        except KeyboardInterrupt:
+            pass
+    else:
+        translator.start()

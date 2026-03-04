@@ -11,6 +11,7 @@ This project provides a fast speech-to-text tool with real-time translation. It 
 
 ### Key Features
 - **Multiple Engines**: Choose between `Vosk` (real-time partials), `Whisper Medium` (highest accuracy), and `Whisper Lite/Base` (balanced).
+- **Translation Overlay**: Real-time, transparent, always-on-top window to display translations directly over your apps.
 - **Fast Response**: Optimized silence detection (~0.22s) for quicker translation delivery.
 - **Native Loopback**: Capture system audio directly on macOS (ScreenCaptureKit), Windows (WASAPI), and Linux (Monitor).
 
@@ -82,6 +83,7 @@ python main.py
 
 **Command line:**
 ```bash
+python main.py en ru --overlay                         # Show translation overlay
 python main.py en ru --engine whisper --loopback       # Full Whisper (Medium model)
 python main.py en ru --engine whisper-lite --loopback  # Whisper Lite (Base model)
 python main.py en ru --engine vosk --no-menu           # Vosk (Fast)
@@ -96,6 +98,7 @@ python main.py en ru --engine vosk --no-menu           # Vosk (Fast)
 
 ### Основные возможности
 - **Несколько движков**: Выбор между `Vosk` (мгновенно), `Whisper Medium` (максимальная точность) и `Whisper Lite/Base` (быстрее оригинала).
+- **Графический оверлей**: Прозрачное окно поверх всех приложений для вывода перевода в реальном времени.
 - **Быстрый отклик**: Оптимизированное детектирование пауз (~0.22 сек) для частого вывода перевода.
 - **Нативный захват**: Прямой перехват звука системы на macOS (ScreenCaptureKit), Windows (WASAPI) и Linux (Monitor).
 
@@ -167,6 +170,7 @@ python main.py
 
 **Из командной строки:**
 ```bash
+python main.py en ru --overlay                         # Показать перевод в оверлее
 python main.py en ru --engine whisper --loopback       # Полный Whisper (модель Medium)
 python main.py en ru --engine whisper-lite --loopback  # Whisper Lite (модель Base)
 python main.py en ru --engine vosk --no-menu           # Vosk (Быстрый)
@@ -175,6 +179,6 @@ python main.py en ru --engine vosk --no-menu           # Vosk (Быстрый)
 ---
 
 ## Requirements / Требования
-- `vosk`, `openai-whisper`, `deep-translator`, `silero-vad`, `sounddevice`, `numpy`, `torch`, `torchaudio`, `tqdm`, `requests`
+- `vosk`, `openai-whisper`, `deep-translator`, `silero-vad`, `sounddevice`, `numpy`, `torch`, `torchaudio`, `tqdm`, `requests`, `PyQt6`
 
 **Note:** Translation uses Google Translate API and requires internet. Speech recognition remains local.
