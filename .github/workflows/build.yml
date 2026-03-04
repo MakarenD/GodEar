@@ -31,6 +31,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
+        # If Linux, install CPU version of torch to save space (exclude CUDA)
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+        fi
         pip install -r requirements.txt
 
     - name: Run Build Script
