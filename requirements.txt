@@ -14,3 +14,17 @@ requests
 openai-whisper
 setuptools-rust
 PyQt6
+pynput
+ctranslate2
+transformers
+huggingface-hub
+sentencepiece
+speechbrain
+scipy
+scikit-learn
+hyperpyyaml
+ruamel.yaml
+threadpoolctl
+omegaconf
+SoundFile
+python-dotenv

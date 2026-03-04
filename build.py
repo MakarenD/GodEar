@@ -45,7 +45,8 @@ def build():
     # We check the actual distribution name (what you see in 'pip list')
     optional_distributions = [
         "torch", "tqdm", "regex", "requests", "packaging", 
-        "filelock", "numpy", "tokenizers", "openai-whisper", "vosk", "PyQt6"
+        "filelock", "numpy", "tokenizers", "openai-whisper", "vosk", "PyQt6", "pynput",
+        "ctranslate2", "transformers", "huggingface-hub", "sentencepiece"
     ]
     
     metadata_flags = []
@@ -70,12 +71,27 @@ def build():
         "--hidden-import", "torch",
         "--hidden-import", "torchaudio",
         "--hidden-import", "PyQt6",
+        "--hidden-import", "pynput.keyboard._darwin",
+        "--hidden-import", "pynput.keyboard._win32",
+        "--hidden-import", "pynput.keyboard._xorg",
+        "--hidden-import", "pynput.mouse._darwin",
+        "--hidden-import", "pynput.mouse._win32",
+        "--hidden-import", "pynput.mouse._xorg",
+        "--hidden-import", "ctranslate2",
+        "--hidden-import", "transformers",
+        "--hidden-import", "huggingface_hub",
+        "--hidden-import", "sentencepiece",
         "--collect-all", "vosk",
         "--collect-all", "whisper",
         "--collect-all", "deep_translator",
         "--collect-all", "torch",
         "--collect-all", "torchaudio",
-        "--collect-all", "PyQt6"
+        "--collect-all", "PyQt6",
+        "--collect-all", "pynput",
+        "--collect-all", "ctranslate2",
+        "--collect-all", "transformers",
+        "--collect-all", "huggingface_hub",
+        "--collect-all", "sentencepiece"
     ] + metadata_flags + ["main.py"]
 
     print("\nRunning PyInstaller (this will take 5-10 minutes because of torch/whisper)...")

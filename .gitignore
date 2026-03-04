@@ -43,3 +43,17 @@ Thumbs.db
 
 # Временные папки кэша
 .cache/
+
+# IDE и временные файлы
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Аудио файлы
+*.wav
+*.mp3
+*.flac
+*.ogg
+\n# PyInstaller releases\nreleases/\n*.spec
+settings.json
