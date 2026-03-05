@@ -11,13 +11,13 @@ except ImportError:
     import importlib_metadata as metadata # fallback for older python
 
 def build():
-    # 0. Check Python version (Enforce 3.9)
+    # 0. Check Python version (Strictly 3.9)
     v = sys.version_info
     if not (v.major == 3 and v.minor == 9):
         print("\n" + "!"*50)
-        print(f"ERROR: Incorrect Python version (Found {v.major}.{v.minor}.{v.micro})")
-        print("This project is optimized for Python 3.9.6.")
-        print("Please activate 'venv39' before building.")
+        print(f"FATAL ERROR: Incompatible Python version (Found {v.major}.{v.minor}.{v.micro})")
+        print("This project MUST be built using Python 3.9 to ensure compatibility.")
+        print("Current environment is NOT 3.9. Build aborted.")
         print("!"*50 + "\n")
         sys.exit(1)
 

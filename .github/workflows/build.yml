@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.9', '3.11']
+        python-version: ['3.9']
 
     steps:
     - uses: actions/checkout@v4
@@ -49,18 +49,17 @@ jobs:
     - name: Rename Artifact for Release
       shell: bash
       run: |
-        # Identify the zip file created by build.py and rename it to include python version
+        # Identify the zip file created by build.py
         OS_TYPE=$(python -c "import platform; print(platform.system().lower())")
         if [ "$OS_TYPE" = "darwin" ]; then OS_TYPE="macos"; fi
-        OLD_NAME="releases/speech-to-text-${OS_TYPE}.zip"
-        NEW_NAME="speech-to-text-${OS_TYPE}-py${{ matrix.python-version }}.zip"
-        mv "$OLD_NAME" "$NEW_NAME"
-        echo "ASSET_PATH=$NEW_NAME" >> $GITHUB_ENV
+        ZIP_NAME="speech-to-text-${OS_TYPE}.zip"
+        mv "releases/$ZIP_NAME" "$ZIP_NAME"
+        echo "ASSET_PATH=$ZIP_NAME" >> $GITHUB_ENV
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: speech-to-text-${{ matrix.os }}-py${{ matrix.python-version }}
+        name: speech-to-text-${{ matrix.os }}
         path: ${{ env.ASSET_PATH }}
 
   release:
