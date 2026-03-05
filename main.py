@@ -1,5 +1,54 @@
 import os
 import sys
+import traceback
+
+def exception_handler(exctype, value, tb):
+    """Global handler for uncaught exceptions to prevent instant console closure."""
+    err_msg = "".join(traceback.format_exception(exctype, value, tb))
+    print("\n" + "!"*60)
+    print("FATAL ERROR OCCURRED / ПРОИЗОШЛА ФАТАЛЬНАЯ ОШИБКА:")
+    print(err_msg)
+    print("!"*60)
+    
+    # Save error to file for debugging
+    try:
+        with open("crash_report.txt", "w", encoding="utf-8") as f:
+            f.write(err_msg)
+        print("\nCrash report saved to 'crash_report.txt'.")
+    except:
+        pass
+        
+    input("\nPress ENTER to exit... / Нажмите ENTER для выхода...")
+    sys.exit(1)
+
+# Install global exception handler
+sys.excepthook = exception_handler
+
+def check_system_requirements():
+    """Check for basic requirements before running the main logic."""
+    # 1. Version check (already should be 3.9 from build, but good for local run)
+    v = sys.version_info
+    if v.major != 3 or v.minor < 9:
+        print(f"Warning: Python {v.major}.{v.minor} detected. Recommended version is 3.9.")
+
+    # 2. Windows specific check for Visual C++ Redistributable
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            # Try to load a core CRT dll - if fails, redist is likely missing
+            ctypes.windll.kernel32.LoadLibraryW("msvcp140.dll")
+        except Exception:
+            print("\n" + "="*70)
+            print("ERROR: Missing Microsoft Visual C++ Redistributable!")
+            print("Please download and install it here:")
+            print("https://aka.ms/vs/17/release/vc_redist.x64.exe")
+            print("="*70 + "\n")
+            input("Press ENTER to exit...")
+            sys.exit(1)
+
+# Run system check
+check_system_requirements()
+
 import queue
 import platform
 import sounddevice as sd

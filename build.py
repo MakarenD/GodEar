@@ -11,7 +11,17 @@ except ImportError:
     import importlib_metadata as metadata # fallback for older python
 
 def build():
-    print(f"Starting build for {platform.system()}...")
+    # 0. Check Python version (Enforce 3.9)
+    v = sys.version_info
+    if not (v.major == 3 and v.minor == 9):
+        print("\n" + "!"*50)
+        print(f"ERROR: Incorrect Python version (Found {v.major}.{v.minor}.{v.micro})")
+        print("This project is optimized for Python 3.9.6.")
+        print("Please activate 'venv39' before building.")
+        print("!"*50 + "\n")
+        sys.exit(1)
+
+    print(f"Starting build for {platform.system()} (Python {v.major}.{v.minor})...")
     
     # 1. Setup paths
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,6 +29,12 @@ def build():
     dist_dir = os.path.join(base_dir, "dist")
     build_temp_dir = os.path.join(base_dir, "build")
     app_name = "speech-to-text"
+    
+    # Clean up redundant 'venv' if it exists accidentally
+    bad_venv = os.path.join(base_dir, "venv")
+    if os.path.exists(bad_venv):
+        print(f"Removing redundant 'venv' folder...")
+        shutil.rmtree(bad_venv)
     
     # 2. Check if PyInstaller is installed
     try:
